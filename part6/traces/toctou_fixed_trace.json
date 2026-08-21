@@ -1,0 +1,193 @@
+{
+  "scenario": "toctou_with_conditional_fix",
+  "principle": "A tool response describes the REQUEST, not the WORLD. For irreversible actions, verify the world changed before committing the next consequential action.",
+  "steps": [
+    {
+      "step": 1,
+      "observed_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "unknown",
+        "refund_status": "not_started",
+        "verification_status": "none",
+        "step_count": 0,
+        "budget_remaining": 100.0,
+        "last_tool_result": null
+      },
+      "decided_action": "get_order_status",
+      "tool_called": "get_order_status",
+      "tool_response": {
+        "order_id": "TN-100457",
+        "status": "open"
+      },
+      "verification_read": null,
+      "resulting_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "not_requested",
+        "refund_status": "not_started",
+        "verification_status": "none",
+        "step_count": 1,
+        "budget_remaining": 99.5,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "open"
+        },
+        "world_order_status": "open",
+        "world_refund_status": "none"
+      },
+      "cost": 0.5,
+      "latency_ms": 40.0
+    },
+    {
+      "step": 2,
+      "observed_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "not_requested",
+        "refund_status": "not_started",
+        "verification_status": "none",
+        "step_count": 1,
+        "budget_remaining": 99.5,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "open"
+        }
+      },
+      "decided_action": "cancel_order",
+      "tool_called": "cancel_order",
+      "tool_response": {
+        "order_id": "TN-100457",
+        "status": "accepted",
+        "idempotent_replay": false
+      },
+      "verification_read": null,
+      "resulting_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "pending",
+        "refund_status": "not_started",
+        "verification_status": "none",
+        "step_count": 2,
+        "budget_remaining": 98.5,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "accepted",
+          "idempotent_replay": false
+        },
+        "world_order_status": "pending",
+        "world_refund_status": "none"
+      },
+      "cost": 1.0,
+      "latency_ms": 60.0
+    },
+    {
+      "step": 3,
+      "observed_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "pending",
+        "refund_status": "not_started",
+        "verification_status": "none",
+        "step_count": 2,
+        "budget_remaining": 98.5,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "accepted",
+          "idempotent_replay": false
+        }
+      },
+      "decided_action": "wait_and_recheck",
+      "tool_called": "get_order_status",
+      "tool_response": {
+        "order_id": "TN-100457",
+        "status": "cancelled"
+      },
+      "verification_read": "cancelled",
+      "resulting_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "cancelled",
+        "refund_status": "not_started",
+        "verification_status": "verified",
+        "step_count": 3,
+        "budget_remaining": 98.0,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "cancelled"
+        },
+        "world_order_status": "shipped",
+        "world_refund_status": "none"
+      },
+      "cost": 0.5,
+      "latency_ms": 30.0
+    },
+    {
+      "step": 4,
+      "observed_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "cancelled",
+        "refund_status": "not_started",
+        "verification_status": "verified",
+        "step_count": 3,
+        "budget_remaining": 98.0,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "cancelled"
+        }
+      },
+      "decided_action": "issue_refund",
+      "tool_called": "issue_refund",
+      "tool_response": {
+        "order_id": "TN-100457",
+        "status": "rejected",
+        "reason": "order_not_cancelled"
+      },
+      "verification_read": null,
+      "resulting_state": {
+        "order_id": "TN-100457",
+        "customer_intent": "cancel order and refund what is owed",
+        "approval_status": "approved",
+        "cancellation_status": "cancelled",
+        "refund_status": "not_started",
+        "verification_status": "verified",
+        "step_count": 4,
+        "budget_remaining": 97.0,
+        "last_tool_result": {
+          "order_id": "TN-100457",
+          "status": "rejected",
+          "reason": "order_not_cancelled"
+        },
+        "world_order_status": "shipped",
+        "world_refund_status": "none",
+        "note": "refund rejected by backend: order_not_cancelled"
+      },
+      "cost": 1.0,
+      "latency_ms": 60.0
+    }
+  ],
+  "stop_reason": "refund_rejected_by_backend",
+  "final_state": {
+    "order_id": "TN-100457",
+    "customer_intent": "cancel order and refund what is owed",
+    "approval_status": "approved",
+    "cancellation_status": "cancelled",
+    "refund_status": "not_started",
+    "verification_status": "verified",
+    "step_count": 4,
+    "budget_remaining": 97.0,
+    "last_tool_result": {
+      "order_id": "TN-100457",
+      "status": "rejected",
+      "reason": "order_not_cancelled"
+    }
+  }
+}

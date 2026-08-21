@@ -47,7 +47,7 @@ def main() -> None:
         if result.get("status") == "cancelled":
             print("\n  [CONCURRENT EVENT] Warehouse scanner processes package onto delivery truck!")
             print("  [CONCURRENT EVENT] Order status mutated: 'cancelled' -> 'shipped'\n")
-            order_store.status = "shipped"
+            order_store.settles_to = "shipped"
         return result
 
     tools.order.get_order_status = intercepted_get_order
@@ -74,11 +74,11 @@ def main() -> None:
     print(f"  Agent Loop Outcome        : {trace.stop_reason}")
     print(f"  Agent Cancellation State  : {state.cancellation_status} (Agent believed it was cancelled)")
     print(f"  Agent Refund State        : {state.refund_status} (Agent completed refund)")
-    print(f"  Actual Real-World Status  : {order_store.status}")
+    print(f"  Actual Real-World Status  : {order_store.settles_to}")
     print(f"  Total Refunds Issued      : {tools.refund.refund_effect_count}")
     print("=" * 65)
 
-    if order_store.status == "shipped" and tools.refund.refund_effect_count > 0:
+    if order_store.settles_to == "shipped" and tools.refund.refund_effect_count > 0:
         print("🚨 TOCTOU RACE CONFIRMED:")
         print("   The agent verified cancellation at Step T, but between T and T+1,")
         print("   the real world changed to 'shipped'. The agent issued a refund anyway.")

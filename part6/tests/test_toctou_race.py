@@ -24,7 +24,7 @@ def test_toctou_concurrency_race_between_verify_and_refund():
         result = original_get_order(oid)
         if result.get("status") == "cancelled":
             # Concurrently mutate order in the real world immediately upon verification read
-            order_store.status = "shipped"
+            order_store.settles_to = "shipped"
         return result
 
     tools.order.get_order_status = intercepted_get_order
@@ -47,5 +47,5 @@ def test_toctou_concurrency_race_between_verify_and_refund():
     assert trace.stop_reason == "terminal_action_reached"
 
     # But the real world status is shipped, and refund was paid out:
-    assert order_store.status == "shipped"
+    assert order_store.settles_to == "shipped"
     assert refund_store.refund_effect_count == 1
