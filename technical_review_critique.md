@@ -41,7 +41,42 @@ However, moving from this clean educational model to high-scale, multi-tenant en
 
 ---
 
-## 3. Inline Comments on Specific Article Passages
+## 3. Security & Threat Modeling: Distributed Gaps as Business Logic Vulnerabilities
+
+In production agent architecture, distributed systems edge cases are not merely reliability bugs—they represent **direct financial, state, and business logic attack vectors**:
+
+1. **TOCTOU as a Double-Spend Financial Exploit (CWE-367):**
+   * *The Attack:* An adversarial user orders high-value goods, triggers a cancellation request with the AI agent, and simultaneously issues a rapid-dispatch or warehouse in-store pickup command.
+   * *The Vulnerability:* Because client-side verification is not transactional with backend execution, the agent observes "cancelled", the attacker's concurrent call flips it to "shipped", and the agent issues the refund. The attacker receives both the physical item and the full cash refund.
+   * *Mitigation:* Database-level conditional atomic updates (`UPDATE ... WHERE status='cancelled'`) or optimistic locking (ETags).
+
+2. **Idempotency Collision as a Denial-of-Refund / Integrity Breach:**
+   * *The Attack:* When idempotency keys are statically scoped to entity IDs (`issue_refund:{order_id}`), a malicious actor or buggy client can pre-seed or trigger duplicate actions that cause subsequent legitimate partial refunds or return workflows to be silently ignored by the payment processor as duplicate replays.
+   * *Mitigation:* Composite keys bound to ephemeral workflow run tokens (`f"{intent_id}:{action}:{order_id}"`).
+
+3. **Infrastructure DoS via In-Memory Blocking Loops & Replica Lag:**
+   * *The Attack:* Flooding the agent endpoint with cancellation requests against intentionally slow-settling or delayed backend queues.
+   * *The Vulnerability:* Because each session holds open an active Python thread/process with `time.sleep()`, the serverless/container cluster rapidly suffers thread pool exhaustion and memory starvation.
+   * *Mitigation:* Asynchronous, durable workflow orchestrators (Azure Durable Functions / Temporal) with event-driven webhooks.
+
+4. **Economic DoS / Wallet Draining via Unbounded Generation:**
+   * *The Attack:* Supplying adversarial prompts that cause the LLM to output massive reasoning token chains. Static preflight budget checks pass because they only check tool base costs, allowing the LLM call to blow past intended spending limits before post-hoc reconciliation occurs.
+   * *Mitigation:* Dynamic token credit escrow and pre-allocated token reservation bounds.
+
+---
+
+## 4. Empirical Proof & Companion Test Suite
+
+To substantiate these findings, working live reproductions and pytest suites have been implemented and validated on the companion fork at [`markstevenson15/ai-agents-in-practice-samples`](https://github.com/markstevenson15/ai-agents-in-practice-samples):
+
+* **`part6/examples/run_toctou_race.py`** & **`tests/test_toctou_race.py`**: Proves an agent executes a refund on a shipped order when state is mutated between verification and execution.
+* **`part6/examples/run_toctou_with_conditional_fix.py`** & **`tests/test_toctou_fix.py`**: Proves how backend atomic conditional checks safely catch the TOCTOU race and reject the refund (`0 money lost`).
+* **`part6/examples/run_idempotency_collision.py`** & **`tests/test_idempotency_collision.py`**: Proves static keys silently drop a second legitimate refund as a duplicate replay.
+* **`part6/examples/run_replica_lag.py`** & **`tests/test_replica_lag.py`**: Proves read-replica lag exhausts step budgets and triggers false human escalations.
+
+---
+
+## 5. Inline Comments on Specific Article Passages
 
 ---
 
@@ -88,20 +123,21 @@ However, moving from this clean educational model to high-scale, multi-tenant en
 
 ---
 
-## 4. Summary Table of Suggested Editorial Improvements
+## 6. Summary Table of Suggested Editorial Improvements
 
 | Topic | Article Section | Recommended Addition / Clarification |
 | :--- | :--- | :--- |
-| **Concurrency & TOCTOU** | *Check becomes verify-before-commit* | Add a disclaimer that client-side verification does not replace backend database-level conditional transactions. |
+| **Concurrency & TOCTOU** | *Check becomes verify-before-commit* | Add a disclaimer that client-side verification does not replace backend database-level conditional transactions (prevents CWE-367 double-spend exploits). |
 | **Read Consistency** | *Check becomes verify-before-commit* | Mention read-replica lag and distributed cache-invalidation as pitfalls for ground-truth re-reads. |
-| **Idempotency Key Scope** | *Tool contracts* | Clarify that keys must be scoped to `intent_id + action_name` rather than static `order_id` strings. |
-| **Runtime Persistence** | *State / The loop still holds* | Note that production asynchronous loops require durable state stores (Redis/Postgres) rather than in-memory Python objects. |
-| **Dynamic Budgeting** | *Budget and stop rules* | Note that LLM deciders require reservation/escrow mechanisms for dynamic output token costs. |
+| **Idempotency Key Scope** | *Tool contracts* | Clarify that keys must be scoped to `intent_id + action_name` rather than static `order_id` strings to prevent silent duplicate-drop vulnerabilities. |
+| **Runtime Persistence** | *State / The loop still holds* | Note that production asynchronous loops require durable state stores (Redis/Postgres) rather than in-memory Python objects to avoid DoS/timeouts. |
+| **Dynamic Budgeting** | *Budget and stop rules* | Note that LLM deciders require reservation/escrow mechanisms for dynamic output token costs to prevent economic wallet draining. |
+| **Security & Threat Model** | *The loop still holds* | Emphasize that agent state boundaries are financial security perimeters. |
 
 ---
 
-## 5. Final Takeaway for the Author
+## 7. Final Takeaway for the Author
 
 The article is **exceptionally well-written, structurally sound, and targets the exact pain points engineers face when deploying agents**. 
 
-Incorporating the distributed systems and concurrency nuances detailed above will ensure that readers not only understand the conceptual model, but also avoid common production pitfalls when building against real microservices and databases.
+Incorporating the distributed systems, security threat modeling, and concurrency nuances detailed above will ensure that readers not only understand the conceptual model, but also avoid common production pitfalls when building against real microservices and databases.
